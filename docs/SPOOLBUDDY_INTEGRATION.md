@@ -1,5 +1,7 @@
 # Integrating a TPU feeder in Bambuddy's SpoolBuddy Devices
 
+**Fork implementation:** [Nicco-Male/bambuddy draft PR #1](https://github.com/Nicco-Male/bambuddy/pull/1), branch `feature/tpu-feed-assist-spoolbuddy-poc`. XIAO firmware branch `feature/spoolbuddy-fork-poc`. Current stage: typed registration/heartbeat + device card; no feeder actuation API or printer-idle integration. **Do not test against production Bambuddy.** This is independent of the official upstream project.
+
 **Goal:** show the XIAO ESP32-S3 TPU Feed Assist bridge under **Settings → SpoolBuddy Devices**, alongside RFID/scale stations, but as a separate **TPU feeder** capability. The hardware remote-controller inspiration is by [MacDat](https://makerworld.com/en/models/2704030); ESP32 firmware and software integration are independent extensions. See [NOTICE](../NOTICE.md).
 
 ## Upstream code inspection (18 November 2026)
@@ -30,7 +32,7 @@ A public GitHub repo must NEVER contain real Wi-Fi passwords, Bambuddy API keys 
 
 - First boot: XIAO AP setup page on `192.168.4.1`, configured with a network scan and SSID/password.
 - Onboarding: form for **Bambuddy URL and API key** (stored on device in NVS/Preferences) plus optional MQTT broker settings.
-- These credentials do not imply native integration until the upstream API supports the feeder type.
+- Once the Bambuddy fork PR is deployed on a **staging** instance, the XIAO registers via `POST /api/v1/spoolbuddy/devices/register` using `device_type=tpu_feed_assist`, `has_nfc=false`, `has_scale=false`, and renews the online state via `/devices/{id}/heartbeat` every 10 seconds. The firmware intentionally accepts **no motion commands from Bambuddy** in this PoC. Production upstream does not yet support this type.
 - After onboarding: join the same routable LAN/VLAN as Bambuddy and the X1C and expose authenticated management.
 - Physical buttons remain passive-through, independent of network connectivity.
 - OTA only with credentials and operator-verified printer idle.

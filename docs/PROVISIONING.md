@@ -24,7 +24,7 @@ WiFiManager stores the station SSID/password in the ESP32 Wi-Fi subsystem; other
 - Existing secret fields are **not prefilled** in the portal. Leaving a secret blank preserves the current stored value.
 - If no 12+ char admin password and no 16+ char HTTP token has been saved, web actions remain **unauthorized**. A first-time installer should set both.
 - NVS is persistent flash storage and is **not encrypted** by this prototype. Anyone with sufficient physical access to the ESP32 may be able to extract it. Protect physical access and the Bambuddy API token; use a least-privilege key.
-- Existing Bambuddy “SpoolBuddy Devices” currently assumes Raspberry Pi NFC/scale hardware; registration as a TPU feeder requires upstream `device_type` / capability-aware changes. See [SPOOLBUDDY_INTEGRATION.md](SPOOLBUDDY_INTEGRATION.md).
+- Existing Bambuddy “SpoolBuddy Devices” currently assumes Raspberry Pi NFC/scale hardware; registration as a TPU feeder is provisionally implemented in a personal-fork draft PR; it is NOT in official Bambuddy. See [SPOOLBUDDY_INTEGRATION.md](SPOOLBUDDY_INTEGRATION.md).
 - The current module has **no automatic AMS/TPU material swapping, no verified filament feedback, no safe automated unload**.
 
 ## Firmware status
