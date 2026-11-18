@@ -16,6 +16,15 @@ static constexpr uint32_t MQTT_RETRY_MS = 5000;
 static constexpr uint32_t WIFI_RETRY_MS = 12000;
 static constexpr long MQTT_MAX_CLOCK_SKEW_S = 10;
 static constexpr size_t RECENT_IDS = 12;
+static constexpr uint32_t LOCAL_DEBOUNCE_MS = 40;
+// Inputs are ONLY from a separately validated isolated open-collector front end.
+// NEVER attach a Bambu PCB switch line directly to these GPIOs.
+struct LocalInput { const char* name; uint8_t gpio; bool lastRaw; bool stable; uint32_t changedAt; };
+LocalInput localInputs[] = {
+  {"feed", GPIO_LOCAL_FEED, false, false, 0},
+  {"unload", GPIO_LOCAL_UNLOAD, false, false, 0},
+  {"force", GPIO_LOCAL_FORCE, false, false, 0}
+};
 static_assert(PULSE_MS >= 50 && PULSE_MS <= 300, "PULSE_MS must be 50-300ms");
 
 WiFiClient networkClient;
@@ -90,7 +99,8 @@ String statusJson() {
   doc["unload_armed"] = isUnloadArmed();
   doc["automatic_unload_supported"] = false;
   doc["multimaterial_switching_supported"] = false;
-  doc["local_button_sensing_available"] = false;
+  doc["local_button_sensing_available"] = false; // unverified physical front end
+  doc["local_button_monitoring_enabled"] = ENABLE_LOCAL_BUTTON_MONITORING;
   doc["motor_feedback_available"] = false;
   doc["last_button"] = lastButton;
   doc["last_request_id"] = lastRequestId;
@@ -113,6 +123,33 @@ void publishEvent(const String& id, const String& button, const char* result,
   doc["ts"] = clockReady() ? time(nullptr) : 0;
   mqtt.publish(topicEvent.c_str(), toJson(doc).c_str(), false);
 }
+// Observe debounced local button states; this code NEVER actuates the feeder.
+// A remote PhotoMOS closure looks like a button press to an across-key sensor;
+// suppress sensing during and briefly after any remote pulse.
+void monitorLocalButtons() {
+  if (!ENABLE_LOCAL_BUTTON_MONITORING) return;
+  const uint32_t now = millis();
+  if (activeButton || (hasCompletedPulse && uint32_t(now-lastPulseCompletedAt) < 350)) {
+    // Keep input history aligned while suppressing these electrically ambiguous edges.
+    for (LocalInput& key : localInputs) {
+      key.lastRaw = digitalRead(key.gpio) == LOW;
+      key.stable = key.lastRaw;
+      key.changedAt = now;
+    }
+    return;
+  }
+  for (LocalInput& key : localInputs) {
+    const bool raw = digitalRead(key.gpio) == LOW;
+    if (raw != key.lastRaw) { key.lastRaw = raw; key.changedAt = now; }
+    if (raw != key.stable && uint32_t(now-key.changedAt) >= LOCAL_DEBOUNCE_MS) {
+      key.stable = raw;
+      publishEvent("", key.name, raw ? "local_press_observed_unverified" :
+                         "local_release_observed_unverified", "local_gpio");
+      publishStatus();
+    }
+  }
+}
+
 const char* startPulse(const String& buttonName, const String& id,
                        const char* source) {
   const Button* button = findButton(buttonName);
@@ -285,6 +322,14 @@ void setup() {
     pinMode(b.gpio,OUTPUT);
   }
   pinMode(GPIO_UNLOAD_ARM,INPUT_PULLUP);
+  if (ENABLE_LOCAL_BUTTON_MONITORING) {
+    for (LocalInput& key : localInputs) {
+      pinMode(key.gpio, INPUT_PULLUP); // for isolated open-collector output ONLY
+      key.lastRaw = digitalRead(key.gpio) == LOW;
+      key.stable = key.lastRaw;
+      key.changedAt = millis();
+    }
+  }
   const esp_timer_create_args_t timerArgs={
     .callback=&pulseTimerCallback,
     .arg=nullptr,
@@ -323,6 +368,7 @@ void setup() {
 }
 void loop() {
   updatePulse();
+  monitorLocalButtons();
   http.handleClient();
   updatePulse();
   if(WiFi.status()!=WL_CONNECTED &&
