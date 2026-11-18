@@ -12,6 +12,8 @@ This repository builds on **that hardware concept** by proposing an ESP32-S3 bri
 
 **Target board:** [Seeed Studio XIAO ESP32-S3 (standard)](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/). PlatformIO target: `seeed_xiao_esp32s3`. **Planned integrated power:** derive regulated 5 V from the Bambu Bus's nominal 24 V through a protected DC/DC converter inside the feeder housing, with no extra external USB power cable. This power interface is **UNVERIFIED pending real hardware measurements**; initial bench tests may use USB-C instead. See [integrated power plan](docs/INTEGRATED_POWER.md) and [XIAO pinout](docs/XIAO_ESP32S3.md). The optional Sense/Plus add-ons are not part of this design.
 
+**Fork compatibility:** this experimental branch registers the XIAO with the typed `tpu_feed_assist` API in [Nicco-Male/bambuddy PR #1](https://github.com/Nicco-Male/bambuddy/pull/1), then sends an authenticated heartbeat every 10 s. The server URL and API key are entered in the hotspot portal and stored in NVS; no credentials are committed. **Bambuddy-to-XIAO FEED/UNLOAD commands are NOT implemented.** For the PoC the ESP sends only status and never accepts control requests from Bambuddy. The Bambuddy endpoint accepts **HTTP from a trusted isolated LAN only**: HTTPS support awaits CA certificate provisioning and currently fails closed. No upstream changes have been submitted.
+
 The goal is remote control and **local-button event monitoring** using a MacDat-inspired SH1.0 inline adapter. Original buttons should remain electrically usable with the ESP32 unpowered. Firmware implements **remote button pulses**, and provides **optional debounced GPIO input monitoring** of physical keys. Input monitoring is disabled by default: its isolated sensing electronics still require hardware measurements and validation.
 
 > **Experimental / no tested hardware**: this is prototype code. Do not attach the bridge to a printer until the button pinout, voltage, polarity, scan timing and PhotoMOS compatibility have been verified with a DMM or oscilloscope.
@@ -28,7 +30,7 @@ The goal is remote control and **local-button event monitoring** using a MacDat-
 | MQTT events / status | Prototype source |
 | Physical button sensing | Firmware input events implemented behind an OFF-by-default flag; sensing hardware NOT validated |
 | Automatic AMS <-> external TPU material swaps | **Not supported** |
-| Bambuddy registration under SpoolBuddy Devices | Upstream change required; settings stored locally in NVS |
+| Bambuddy registration under SpoolBuddy Devices | **Fork PoC:** implemented in `feature/spoolbuddy-fork-poc` — REGISTER/HEARTBEAT, no motor commands |
 | First-boot Wi-Fi hotspot, setup webpage and Bambuddy/API fields | Firmware implemented, not yet tested on XIAO hardware |
 
 ## Hardware architecture
