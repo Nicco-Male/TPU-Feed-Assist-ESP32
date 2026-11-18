@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoOTA.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -11,7 +12,7 @@
 
 // Provisional bridge. NO actual motor or physical filament feedback.
 // Button sensing is a separate future hardware stage, not implemented.
-static constexpr char VERSION[] = "0.1.0-prototype";
+static constexpr char VERSION[] = "0.2.0-prototype";
 static constexpr uint32_t MQTT_RETRY_MS = 5000;
 static constexpr uint32_t WIFI_RETRY_MS = 12000;
 static constexpr long MQTT_MAX_CLOCK_SKEW_S = 10;
@@ -50,6 +51,8 @@ size_t recentPosition = 0;
 String lastResult = "boot";
 String lastButton = "none";
 String lastRequestId = "";
+bool otaEnabled = false;
+volatile bool otaInProgress = false;
 
 void pulseTimerCallback(void*) {
   // Timer task forcibly opens the relay even if network processing stalls.
@@ -102,6 +105,8 @@ String statusJson() {
   doc["local_button_sensing_available"] = false; // unverified physical front end
   doc["local_button_monitoring_enabled"] = ENABLE_LOCAL_BUTTON_MONITORING;
   doc["motor_feedback_available"] = false;
+  doc["ota_enabled"] = otaEnabled;
+  doc["ota_in_progress"] = otaInProgress;
   doc["last_button"] = lastButton;
   doc["last_request_id"] = lastRequestId;
   doc["last_result"] = lastResult;
@@ -156,6 +161,7 @@ const char* startPulse(const String& buttonName, const String& id,
   if (!button) return "unknown_button";
   if (!validRequestId(id)) return "invalid_request_id";
   if (hasSeenId(id)) return "duplicate_request_id";
+  if (otaInProgress) return "ota_in_progress";
   if (activeButton) return "busy";
   if (hasCompletedPulse &&
       uint32_t(millis()-lastPulseCompletedAt) < COMMAND_COOLDOWN_MS) return "cooldown";
@@ -249,6 +255,45 @@ async function press(button){
 }
 setInterval(refresh,3000);refresh();
 </script></html>)HTML";
+
+// OTA is opt-in and refuses placeholder/short passwords. Requires a trusted LAN.
+// IMPORTANT: Firmware cannot yet know if the X1C is printing. Update only when
+// the printer and feeder are both idle; this is an operator responsibility.
+void configureOta() {
+  otaEnabled = ENABLE_OTA && strlen(OTA_PASSWORD) >= 16 &&
+               strcmp(OTA_PASSWORD, "CHANGE_ME") != 0 &&
+               strncmp(OTA_PASSWORD, "CHANGE_TO_", 10) != 0;
+  if (!otaEnabled) {
+    Serial.println("OTA disabled: enable with a strong unique password in config.h");
+    return;
+  }
+  ArduinoOTA.setHostname(DEVICE_ID);
+  ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.onStart([]() {
+    otaInProgress = true;
+    // Fail open: force all simulated button contacts OFF during firmware update.
+    for (const Button& b : BUTTONS) digitalWrite(b.gpio, LOW);
+    if (activeButton) {
+      esp_timer_stop(pulseTimer);
+      activeButton = nullptr;
+      pulseExpired = false;
+    }
+    lastResult = "ota_started_unverified_printer_idle";
+    publishStatus();
+    Serial.println("OTA started: buttons disabled until restart");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("OTA finished; restarting");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA failed (code %u)\n", (unsigned)error);
+    otaInProgress = false;
+    lastResult = "ota_error";
+  });
+  ArduinoOTA.begin();
+  Serial.println("Arduino OTA enabled on trusted LAN");
+}
 
 void configureHttp() {
   const char* headers[]={"X-API-Key"};
@@ -364,12 +409,14 @@ void setup() {
   mqtt.setCallback(onMqttMessage);
   mqtt.setBufferSize(1024);
   configureHttp();
+  configureOta();
   Serial.printf("TPU Feed Assist %s / %s - button pulses ONLY\n",VERSION,DEVICE_ID);
 }
 void loop() {
   updatePulse();
   monitorLocalButtons();
   http.handleClient();
+  if (otaEnabled && WiFi.status() == WL_CONNECTED) ArduinoOTA.handle();
   updatePulse();
   if(WiFi.status()!=WL_CONNECTED &&
      uint32_t(millis()-lastWifiAttempt)>=WIFI_RETRY_MS){
