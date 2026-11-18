@@ -29,6 +29,40 @@ Original physical keys remain connected passively through SH1.0 adapters.
 
 *Prefer an accessible in-line **harness adapter** or dedicated board with exactly matched rated connectors, rather than cutting, soldering or guessing pads on the Bambu PCB. Locate the 24 V rail using the exact feeder assembly, official schematic if available, and a multimeter. Do not infer 4-pin/6-pin orientation from internet pinout drawings.
 
+## Physical connection: 4-pin BUS male/female interposer
+
+**Recommended for this project:** do **not** cut the original Bambu Bus cable, and do not draw power from the Hall/tension sensor wiring. Use a short **male-to-female 4-pin pass-through interposer** between the original TPU Feed Assist Bambu Bus cable and the feeder's 4-pin power input, with a small tap for **only** bus +24 V and GND.
+
+```text
+Original 4-pin Bambu Bus cable
+             |
+    [4-pin matching socket]
+       1:1 pass-through PCB <--- exactly same pin-to-pin mapping (verify)
+    [4-pin matching plug]
+             |
+    Original 4-pin input on TPU Feed Assist
+             |
+     [feeder PCB untouched]
+
+From interposer's MEASURED +24V / GND pads ONLY:
+  +24V -> branch fuse/protection -> DC/DC 24->5V -> diode/power path -> XIAO 5V
+   GND -> DC/DC input return -> XIAO GND if using NON-isolated buck
+  Bambu BUS differential data pair A/B -> **straight-through only**;
+  no connection to XIAO or DC/DC.
+```
+
+Connector family references for standard X1 Bambu 4-pin Bus: [Bambu Power Tap 446](https://www.printables.com/model/468472-x1c-power-tap-446), [Power Tap DIY](https://www.printables.com/model/473070-bambu-power-tap-diy) and [Molex Micro-Fit 3.0 discussion](https://forum.bambulab.com/t/tap-into-ams-power-for-small-fans/115907). Treat these as **compatible design examples**, not certified pinout / mechanical compatibility with every TPU Feed Assist PCB revision. Check mating gender, keyed orientation, latch, continuity and actual supply polarity before ordering or energizing. Never assign +24/GND based on wire color alone.
+
+This interposer can be placed **inside an expanded printed feeder housing**, potentially with XIAO and DC/DC on the same small carrier. The external power cable stays unchanged. It must not strain the feeder's input socket.
+
+### Could we use the Hall tension-sensor harness instead?
+
+The official guide calls it the **Hall board**, attached to the main feeder PCB by a separate cable ([Bambu guide mirror, Step 6](https://p3d.mx/products/tpu-feed-assist-module-for-bambu-lab)). Public assembly instructions do **not provide a verified pinout, voltage, or spare current capacity** for that connector. It might contain a 3.3/5 V logic rail, or it may be a scanned/digital/analogue sensing circuit that must not be loaded.
+
+Even if a DMM measures 3.3/5 V at that connector, that does **not prove it can supply the Wi-Fi current bursts of a XIAO ESP32-S3**. Its sensor supply might be filtered/low-current and extra loading can corrupt tension feedback or reset the feeder. Thus **sensor harness = potential signal observation after study, NOT chosen power source**.
+
+A different option is taking +24 V/GND at measured input-side solder pads on the feeder PCB, but that is less reversible and requires modifying the original Bambu PCB. The inline bus interposer is the preferred no-cut/no-solder-originals option.
+
 ## Design targets (not a tested BOM)
 
 - **Input**: Bambu Bus nominal 24 V DC; verify polarity, power-up transients and available headroom with X1C + two AMS units + AMS Hub + feed module.
