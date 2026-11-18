@@ -29,6 +29,17 @@ class PrototypeContract(unittest.TestCase):
         self.assertIn("otaInProgress", SOURCE)
         self.assertIn('if (otaInProgress) return "ota_in_progress"', SOURCE)
 
+    def test_spoolbuddy_fork_registration(self):
+        self.assertIn('req["device_type"] = "tpu_feed_assist"', SOURCE)
+        self.assertIn('req["has_nfc"] = false', SOURCE)
+        self.assertIn('req["has_scale"] = false', SOURCE)
+        self.assertIn('"/api/v1/spoolbuddy/devices/register"', SOURCE)
+        self.assertIn('"/heartbeat"', SOURCE)
+        self.assertIn('request.addHeader("X-API-Key", bambuddyApiKey)', SOURCE)
+        self.assertIn('bambuddyUrl.startsWith("http://")', SOURCE)
+        self.assertIn('bambuddyRegistered && bambuddyHeartbeatOk', SOURCE)
+        self.assertNotIn('req["pending_command"]', SOURCE)
+
     def test_public_firmware_has_no_network_secrets(self):
         self.assertNotIn("#define WIFI_SSID", CONFIG)
         self.assertNotIn("#define WIFI_PASSWORD", CONFIG)
