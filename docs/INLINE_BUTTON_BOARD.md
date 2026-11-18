@@ -38,7 +38,7 @@ An optocoupler LED + resistor between the two key terminals draws current while 
 4. Characterize total leakage allowed across an open switch; select sensing front end with negligible loading and fail-open behavior.
 5. Verify original buttons remain fully functional with the ESP32 **unpowered/disconnected**, and that remote pulses alone cannot falsely generate a reported *local* key event.
 
-Only then assign GPIO inputs, circuit values, filtering and a documented board layout. The firmware has **optional** isolated input GPIO8 (FEED), GPIO9 (UNLOAD) and GPIO10 (FORCE), disabled by default with `ENABLE_LOCAL_BUTTON_MONITORING=false`. It debounces isolated active-LOW contact outputs and reports `local_press_observed_unverified` / `local_release_observed_unverified` via the existing MQTT event topic. Do NOT enable until the sensing front-end is validated. These are GPIO observations, not confirmed feeder actions.
+Only then assign GPIO inputs, circuit values, filtering and a documented board layout. The firmware has **optional** isolated inputs XIAO D0/GPIO1 (FEED), D1/GPIO2 (UNLOAD), D9/GPIO8 (FORCE), disabled by default with `ENABLE_LOCAL_BUTTON_MONITORING=false`. It debounces isolated active-LOW contact outputs and reports `local_press_observed_unverified` / `local_release_observed_unverified` via the existing MQTT event topic. Do NOT enable until the sensing front-end is validated. These are GPIO observations, not confirmed feeder actions.
 
 ## Failure behavior
 
