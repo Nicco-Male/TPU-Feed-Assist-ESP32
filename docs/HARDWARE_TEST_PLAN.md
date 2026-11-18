@@ -1,5 +1,9 @@
 # Hardware verification checklist
 
+- [ ] Confirm target board is Seeed **XIAO ESP32-S3 standard**, pin mapping per [XIAO_ESP32S3.md](XIAO_ESP32S3.md).
+- [ ] Power XIAO via **USB-C** separately: do not use unknown Bambu Bus voltages or join grounds across PhotoMOS isolation.
+- [ ] Verify XIAO boot pins keep the three PhotoMOS outputs **off** (external resistors on driver inputs), including reset/USB disconnect.
+
 **Do not power the bridge from the unknown switch conductors.**
 
 - [ ] PhotoMOS contact resistance, leakage and voltage rating verified against Bambu button terminals (measured).
