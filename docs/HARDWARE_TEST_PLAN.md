@@ -1,7 +1,13 @@
 # Hardware verification checklist
 
 - [ ] Confirm target board is Seeed **XIAO ESP32-S3 standard**, pin mapping per [XIAO_ESP32S3.md](XIAO_ESP32S3.md).
-- [ ] Power XIAO via **USB-C** separately: do not use unknown Bambu Bus voltages or join grounds across PhotoMOS isolation.
+- [ ] Verify the nominal 24 V feeder power rail/polarity on this actual unit, with 2 AMS + Hub connected; do **not** touch data/RS485 conductors.
+- [ ] Verify feeder and both AMS leave enough supply headroom for the XIAO added load.
+- [ ] Bench-test protected DC/DC 24 -> 5 V supply (fuse, transient protection, current headroom) and XIAO diode/power-path solution.
+- [ ] Verify no USB reverse backfeed when connecting a programming computer.
+- [ ] Decide and document isolated vs non-isolated DC/DC; non-isolated DC/DC shares Bambu GND and does **not** provide full galvanic isolation.
+- [ ] Verify original feeder remains functional if added 5 V supply branch fails.
+- [ ] See [INTEGRATED_POWER.md](INTEGRATED_POWER.md) for final integrated power design; USB-C separate supply is only for safe prototype testing.
 - [ ] Verify XIAO boot pins keep the three PhotoMOS outputs **off** (external resistors on driver inputs), including reset/USB disconnect.
 
 **Do not power the bridge from the unknown switch conductors.**
