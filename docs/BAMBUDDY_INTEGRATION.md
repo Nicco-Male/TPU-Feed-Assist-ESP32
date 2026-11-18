@@ -1,5 +1,7 @@
 # Proposed Bambuddy accessory integration
 
+**Updated direction (2026-11-18): integrate the XIAO feeder as a typed accessory under Bambuddy's existing “SpoolBuddy Devices” UI, NOT as an AMS slot and NOT as a fake Raspberry Pi NFC/scale station.** See [SPOOLBUDDY_INTEGRATION.md](SPOOLBUDDY_INTEGRATION.md) for upstream model/API/UI changes and [PROVISIONING.md](PROVISIONING.md) for the Wi-Fi AP setup process.
+
 Upstream: https://github.com/maziggy/bambuddy
 
 **Original hardware inspiration:** [MacDat's TPU Feed Assist Module Remote Controller](https://makerworld.com/en/models/2704030). The SH1.0 external-button concept is MacDat's original work. The ESP32 protocol and integration proposal are independent extensions, not MacDat's firmware or an endorsement. See [NOTICE.md](../NOTICE.md).
@@ -28,7 +30,7 @@ Status MUST NOT claim physical success after a pulse: `pulse_complete_unverified
 
 ## Proposed Bambuddy UI
 
-Add optional **external TPU feeder accessory** per printer (not a virtual AMS slot). Show device availability and FEED/FORCE buttons; UNLOAD disabled unless armed. Track request IDs to distinguish confirmed command delivery from filament movement. Add a later **physical-button event** integration only after electrical sensing and firmware events exist. Local key events should not be confused with remote commands.
+Add optional **type `tpu_feed_assist` under SpoolBuddy Devices**, with printer association (not a virtual AMS slot). Show device availability and FEED/FORCE buttons; UNLOAD disabled unless armed. Track request IDs to distinguish confirmed command delivery from filament movement. Add a later **physical-button event** integration only after electrical sensing and firmware events exist. Local key events should not be confused with remote commands.
 
 ## Explicit non-goals
 
