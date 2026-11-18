@@ -4,6 +4,7 @@
 #include <ArduinoOTA.h>
 #include <Preferences.h>
 #include <WiFiManager.h>
+#include <HTTPClient.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -60,6 +61,10 @@ String bambuddyUrl, bambuddyApiKey, mqttHost, mqttUser, mqttPassword;
 String adminPassword, httpApiKey, otaPassword;
 uint16_t mqttPort = 1883;
 bool otaRequested = false;
+bool bambuddyRegistered = false;
+bool bambuddyHeartbeatOk = false;
+uint32_t lastBambuddyPoll = 0;
+static constexpr uint32_t BAMBUDDY_HEARTBEAT_MS = 10000;
 String setting(const char* key) { return preferences.getString(key, ""); }
 void loadSettings() {
   bambuddyUrl = setting("bb_url"); bambuddyApiKey = setting("bb_key");
@@ -188,7 +193,7 @@ String statusJson() {
   doc["ota_in_progress"] = otaInProgress;
   doc["bambuddy_url_configured"] = !bambuddyUrl.isEmpty();
   doc["bambuddy_api_key_configured"] = !bambuddyApiKey.isEmpty();
-  doc["bambuddy_integration_active"] = false; // upstream type pending
+  doc["bambuddy_integration_active"] = bambuddyRegistered && bambuddyHeartbeatOk;
   doc["mqtt_configured"] = !mqttHost.isEmpty();
   doc["wifi_ssid"] = WiFi.SSID();
   doc["last_button"] = lastButton;
@@ -377,6 +382,61 @@ void configureOta() {
   Serial.println("Arduino OTA enabled on trusted LAN");
 }
 
+// Fork-only SpoolBuddy proof-of-concept: registration + heartbeat.
+// No actuation commands are accepted from Bambuddy in this phase.
+// Plain HTTP is allowed only on a trusted private LAN. HTTPS fails CLOSED:
+// a future release needs CA certificate provisioning and verification.
+bool postBambuddy(const String& path, const JsonDocument& body, int& status) {
+  status = 0;
+  if (bambuddyUrl.isEmpty() || bambuddyApiKey.isEmpty() ||
+      !bambuddyUrl.startsWith("http://") || WiFi.status() != WL_CONNECTED)
+    return false;
+  WiFiClient client;
+  HTTPClient request;
+  request.setTimeout(2500);
+  String url = bambuddyUrl;
+  while(url.endsWith("/")) url.remove(url.length()-1);
+  if(!request.begin(client, url + path)) return false;
+  request.addHeader("Content-Type", "application/json");
+  request.addHeader("X-API-Key", bambuddyApiKey);
+  const String json = toJson(body);
+  status = request.POST(json);
+  request.end();
+  return status >= 200 && status < 300;
+}
+void serviceBambuddy() {
+  if (WiFi.status()!=WL_CONNECTED || bambuddyUrl.isEmpty() ||
+      bambuddyApiKey.isEmpty()) return;
+  if (lastBambuddyPoll && uint32_t(millis()-lastBambuddyPoll) < BAMBUDDY_HEARTBEAT_MS) return;
+  lastBambuddyPoll = millis();
+  int status=0;
+  if(!bambuddyRegistered) {
+    JsonDocument req;
+    req["device_id"] = DEVICE_ID;
+    req["hostname"] = String("TPU Feed Assist - ") + DEVICE_ID;
+    req["ip_address"] = WiFi.localIP().toString();
+    req["firmware_version"] = VERSION;
+    req["device_type"] = "tpu_feed_assist";
+    req["has_nfc"] = false;
+    req["has_scale"] = false;
+    bambuddyRegistered = postBambuddy("/api/v1/spoolbuddy/devices/register",req,status);
+    bambuddyHeartbeatOk = false;
+    if(!bambuddyRegistered) Serial.printf("Bambuddy registration failed: HTTP %d\n",status);
+    return;
+  }
+  JsonDocument req;
+  req["uptime_s"] = millis()/1000;
+  req["ip_address"] = WiFi.localIP().toString();
+  req["firmware_version"] = VERSION;
+  req["nfc_ok"] = false;
+  req["scale_ok"] = false;
+  bambuddyHeartbeatOk = postBambuddy(
+    String("/api/v1/spoolbuddy/devices/")+DEVICE_ID+"/heartbeat",req,status);
+  if(status==404) bambuddyRegistered=false; // device manually unregistered
+  if(!bambuddyHeartbeatOk) Serial.printf("Bambuddy heartbeat failed: HTTP %d\n",status);
+  publishStatus();
+}
+
 void configureHttp() {
   const char* headers[]={"X-API-Key"};
   http.collectHeaders(headers,1);
@@ -499,6 +559,7 @@ void loop() {
   updatePulse();
   monitorLocalButtons();
   http.handleClient();
+  serviceBambuddy();
   if (otaEnabled && WiFi.status() == WL_CONNECTED) ArduinoOTA.handle();
   updatePulse();
   if(WiFi.status()!=WL_CONNECTED &&
