@@ -7,7 +7,7 @@ Starting with firmware `0.2.0-prototype`, the XIAO can receive future updates ov
 ## Initial setup (one-time USB flash)
 
 1. Copy `include/config.example.h` to `include/config.h` and enter credentials; `config.h` is gitignored.
-2. Set `ENABLE_OTA true` and `OTA_PASSWORD` to a **new unique** secret at least 16 characters long (the placeholder value is explicitly refused). Do not commit credentials.
+2. On first boot use the `TPU-Feed-XXXX` setup hotspot at `http://192.168.4.1`. Enter a **new, unique 16+ character** OTA password and choose `OTA enable = 1`. Both values are stored in NVS, not compiled into a public firmware. See [PROVISIONING.md](PROVISIONING.md).
 3. With the controller connected to **USB-C on the workbench** and **no Bambu feeder attached**, flash from PlatformIO:
    ```sh
    pio run -e xiao_esp32s3 -t upload
@@ -15,7 +15,7 @@ Starting with firmware `0.2.0-prototype`, the XIAO can receive future updates ov
    ```
 4. Check serial output for `Arduino OTA enabled on trusted LAN` and obtain the XIAO IP address from DHCP leases.
 
-The OTA listener is disabled by default unless `ENABLE_OTA` is set, and refuses placeholder or short passwords.
+The OTA listener is disabled unless the portal's OTA flag is enabled and a 16+ character password has been saved.
 
 ## Subsequent Wi-Fi updates
 
@@ -36,7 +36,7 @@ This command can expose the password to local shell history or process inspectio
 
 ## Confirmation
 
-- The bridge reports `"version": "0.2.0-prototype"` and `"ota_enabled": true` via authenticated `GET /api/v1/status`.
+- The bridge reports `"version": "0.3.0-prototype"` and `"ota_enabled": true` via authenticated `GET /api/v1/status`.
 - `ota_in_progress` indicates that an update has started. All simulated button outputs are forced off when OTA begins.
 - The MQTT `availability` topic will briefly go offline during reboot and return online.
 
