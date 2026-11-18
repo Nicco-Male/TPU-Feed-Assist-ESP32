@@ -6,7 +6,22 @@ SOURCE = (ROOT / "src/main.cpp").read_text()
 CONFIG = (ROOT / "include/config.example.h").read_text()
 DOC = (ROOT / "docs/INLINE_BUTTON_BOARD.md").read_text()
 
+PLATFORMIO = (ROOT / "platformio.ini").read_text()
+WORKFLOW = (ROOT / ".github/workflows/firmware.yml").read_text()
+
 class PrototypeContract(unittest.TestCase):
+    def test_xiao_target(self):
+        self.assertIn("board = seeed_xiao_esp32s3", PLATFORMIO)
+        self.assertIn("[env:xiao_esp32s3]", PLATFORMIO)
+        self.assertIn("pio run -e xiao_esp32s3", WORKFLOW)
+        pins = {
+            "GPIO_FEED": 4, "GPIO_UNLOAD": 5, "GPIO_FORCE": 6,
+            "GPIO_UNLOAD_ARM": 7,
+            "GPIO_LOCAL_FEED": 1, "GPIO_LOCAL_UNLOAD": 2,
+            "GPIO_LOCAL_FORCE": 8,
+        }
+        for name, pin in pins.items():
+            self.assertRegex(CONFIG, rf"#define\s+{name}\s+{pin}(?:\s|$)")
     def test_protected_unload(self):
         self.assertIn("#define ENABLE_UNLOAD_BUTTON false", CONFIG)
         self.assertIn('buttonName == "unload" && !isUnloadArmed()', SOURCE)
