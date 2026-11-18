@@ -23,12 +23,20 @@ class PrototypeContract(unittest.TestCase):
         for name, pin in pins.items():
             self.assertRegex(CONFIG, rf"#define\s+{name}\s+{pin}(?:\s|$)")
     def test_wifi_ota_is_opt_in_and_password_protected(self):
-        self.assertIn("#define ENABLE_OTA false", CONFIG)
         self.assertIn("#define OTA_PORT 3232", CONFIG)
-        self.assertIn('ArduinoOTA.setPassword(OTA_PASSWORD)', SOURCE)
-        self.assertIn("strlen(OTA_PASSWORD) >= 16", SOURCE)
+        self.assertIn("ArduinoOTA.setPassword(otaPassword.c_str())", SOURCE)
+        self.assertIn("otaRequested && otaPassword.length() >= 16", SOURCE)
         self.assertIn("otaInProgress", SOURCE)
         self.assertIn('if (otaInProgress) return "ota_in_progress"', SOURCE)
+
+    def test_public_firmware_has_no_network_secrets(self):
+        self.assertNotIn("#define WIFI_SSID", CONFIG)
+        self.assertNotIn("#define WIFI_PASSWORD", CONFIG)
+        self.assertNotIn("#define MQTT_PASSWORD", CONFIG)
+        self.assertIn("setupWifiPortal()", SOURCE)
+        self.assertIn('wm.autoConnect(name,"TPUFeedSetup!")', SOURCE)
+        self.assertIn('preferences.begin("tpufeeder",false)', SOURCE)
+        self.assertIn("bambuddy_integration_active", SOURCE)
 
     def test_protected_unload(self):
         self.assertIn("#define ENABLE_UNLOAD_BUTTON false", CONFIG)
