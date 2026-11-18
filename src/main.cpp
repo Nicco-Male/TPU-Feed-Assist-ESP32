@@ -2,6 +2,8 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoOTA.h>
+#include <Preferences.h>
+#include <WiFiManager.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -12,7 +14,7 @@
 
 // Provisional bridge. NO actual motor or physical filament feedback.
 // Button sensing is a separate future hardware stage, not implemented.
-static constexpr char VERSION[] = "0.2.0-prototype";
+static constexpr char VERSION[] = "0.3.0-prototype";
 static constexpr uint32_t MQTT_RETRY_MS = 5000;
 static constexpr uint32_t WIFI_RETRY_MS = 12000;
 static constexpr long MQTT_MAX_CLOCK_SKEW_S = 10;
@@ -51,6 +53,83 @@ size_t recentPosition = 0;
 String lastResult = "boot";
 String lastButton = "none";
 String lastRequestId = "";
+
+// Credentials are provisioned locally; this public repository contains none.
+Preferences preferences;
+String bambuddyUrl, bambuddyApiKey, mqttHost, mqttUser, mqttPassword;
+String adminPassword, httpApiKey, otaPassword;
+uint16_t mqttPort = 1883;
+bool otaRequested = false;
+String setting(const char* key) { return preferences.getString(key, ""); }
+void loadSettings() {
+  bambuddyUrl = setting("bb_url"); bambuddyApiKey = setting("bb_key");
+  mqttHost = setting("mqtt_host"); mqttUser = setting("mqtt_user");
+  mqttPassword = setting("mqtt_pass");
+  mqttPort = preferences.getUShort("mqtt_port", 1883);
+  adminPassword = setting("admin_pass"); httpApiKey = setting("http_key");
+  otaPassword = setting("ota_pass"); otaRequested = preferences.getBool("ota_enable", false);
+}
+void setupWifiPortal() {
+  WiFi.mode(WIFI_STA);
+  WiFiManager wm;
+  wm.setTitle("TPU Feed Assist - XIAO Setup");
+  wm.setConnectTimeout(15);
+  wm.setConfigPortalTimeout(0); // stay in setup until user connects
+  wm.setShowInfoErase(false);
+  wm.setShowPassword(false);
+
+  char bbUrl[160], bbKey[128], mh[100], mp[8], mu[80], mw[100];
+  char apw[100], ak[100], otap[100], otaf[2];
+  bambuddyUrl.toCharArray(bbUrl, sizeof(bbUrl)); bbKey[0]=0;
+  mqttHost.toCharArray(mh,sizeof(mh));
+  snprintf(mp,sizeof(mp),"%u",(unsigned)mqttPort);
+  mqttUser.toCharArray(mu,sizeof(mu)); mw[0]=0; apw[0]=0; ak[0]=0; otap[0]=0;
+  snprintf(otaf,sizeof(otaf),"%d",otaRequested ? 1 : 0);
+
+  WiFiManagerParameter pBbUrl("bb_url","Bambuddy URL (optional)",bbUrl,sizeof(bbUrl));
+  WiFiManagerParameter pBbKey("bb_key","Bambuddy API key (empty keeps saved)",bbKey,sizeof(bbKey));
+  WiFiManagerParameter pMqttHost("mqtt_host","MQTT host (optional; trusted LAN)",mh,sizeof(mh));
+  WiFiManagerParameter pMqttPort("mqtt_port","MQTT port",mp,sizeof(mp));
+  WiFiManagerParameter pMqttUser("mqtt_user","MQTT username",mu,sizeof(mu));
+  WiFiManagerParameter pMqttPass("mqtt_pass","MQTT password (empty keeps saved)",mw,sizeof(mw));
+  WiFiManagerParameter pAdmin("admin_pass","Web admin password (min 12 chars)",apw,sizeof(apw));
+  WiFiManagerParameter pApiKey("http_key","HTTP API token (min 16 chars)",ak,sizeof(ak));
+  WiFiManagerParameter pOtaPwd("ota_pass","OTA password (min 16 chars)",otap,sizeof(otap));
+  WiFiManagerParameter pOtaEnable("ota_enable","Enable OTA: 1 / 0",otaf,sizeof(otaf));
+  for(WiFiManagerParameter* p : {&pBbUrl,&pBbKey,&pMqttHost,&pMqttPort,
+                                &pMqttUser,&pMqttPass,&pAdmin,&pApiKey,&pOtaPwd,&pOtaEnable}) {
+    wm.addParameter(p);
+  }
+  wm.setSaveParamsCallback([&]() {
+    const String url=pBbUrl.getValue();
+    if(url.length()<=150 && (url.isEmpty()||url.startsWith("http://")||url.startsWith("https://")))
+      preferences.putString("bb_url",url);
+    if(strlen(pBbKey.getValue())>0) preferences.putString("bb_key",pBbKey.getValue());
+    preferences.putString("mqtt_host",String(pMqttHost.getValue()).substring(0,90));
+    const int port=atoi(pMqttPort.getValue());
+    preferences.putUShort("mqtt_port",port>0&&port<=65535?port:1883);
+    preferences.putString("mqtt_user",String(pMqttUser.getValue()).substring(0,79));
+    if(strlen(pMqttPass.getValue())>0) preferences.putString("mqtt_pass",pMqttPass.getValue());
+    if(strlen(pAdmin.getValue())>=12) preferences.putString("admin_pass",pAdmin.getValue());
+    if(strlen(pApiKey.getValue())>=16) preferences.putString("http_key",pApiKey.getValue());
+    if(strlen(pOtaPwd.getValue())>=16) preferences.putString("ota_pass",pOtaPwd.getValue());
+    preferences.putBool("ota_enable",strcmp(pOtaEnable.getValue(),"1")==0);
+    loadSettings();
+    Serial.println("Custom settings saved in NVS (no secrets printed)");
+  });
+  char name[32];
+  snprintf(name,sizeof(name),"TPU-Feed-%04X",(unsigned)(ESP.getEfuseMac()&0xffff));
+  Serial.printf("First setup/recovery AP: %s / http://192.168.4.1\n",name);
+  // Bootstrap password is shared/public. Only use AP on a trusted bench.
+  if(!wm.autoConnect(name,"TPUFeedSetup!")) {
+    Serial.println("Provisioning failed; restarting");
+    delay(1500);
+    ESP.restart();
+  }
+  loadSettings();
+  Serial.printf("Wi-Fi connected: %s\n",WiFi.localIP().toString().c_str());
+}
+
 bool otaEnabled = false;
 volatile bool otaInProgress = false;
 
@@ -107,6 +186,11 @@ String statusJson() {
   doc["motor_feedback_available"] = false;
   doc["ota_enabled"] = otaEnabled;
   doc["ota_in_progress"] = otaInProgress;
+  doc["bambuddy_url_configured"] = !bambuddyUrl.isEmpty();
+  doc["bambuddy_api_key_configured"] = !bambuddyApiKey.isEmpty();
+  doc["bambuddy_integration_active"] = false; // upstream type pending
+  doc["mqtt_configured"] = !mqttHost.isEmpty();
+  doc["wifi_ssid"] = WiFi.SSID();
   doc["last_button"] = lastButton;
   doc["last_request_id"] = lastRequestId;
   doc["last_result"] = lastResult;
@@ -201,9 +285,9 @@ void updatePulse() {
   activeSource = "";
 }
 bool authorized() {
-  if (http.authenticate(HTTP_USER, HTTP_PASSWORD)) return true;
+  if (adminPassword.length()>=12 && http.authenticate("admin",adminPassword.c_str())) return true;
   const String supplied=http.header("X-API-Key");
-  return supplied.length()>=16 && supplied==HTTP_API_KEY;
+  return httpApiKey.length()>=16 && supplied==httpApiKey;
 }
 bool requireAuth() {
   if (authorized()) return true;
@@ -260,16 +344,14 @@ setInterval(refresh,3000);refresh();
 // IMPORTANT: Firmware cannot yet know if the X1C is printing. Update only when
 // the printer and feeder are both idle; this is an operator responsibility.
 void configureOta() {
-  otaEnabled = ENABLE_OTA && strlen(OTA_PASSWORD) >= 16 &&
-               strcmp(OTA_PASSWORD, "CHANGE_ME") != 0 &&
-               strncmp(OTA_PASSWORD, "CHANGE_TO_", 10) != 0;
+  otaEnabled = otaRequested && otaPassword.length() >= 16;
   if (!otaEnabled) {
     Serial.println("OTA disabled: enable with a strong unique password in config.h");
     return;
   }
   ArduinoOTA.setHostname(DEVICE_ID);
   ArduinoOTA.setPort(OTA_PORT);
-  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.setPassword(otaPassword.c_str());
   ArduinoOTA.onStart([]() {
     otaInProgress = true;
     // Fail open: force all simulated button contacts OFF during firmware update.
@@ -350,11 +432,11 @@ void onMqttMessage(char* topic,byte* payload,unsigned int length) {
   if(err) publishEvent(id,button,err,"mqtt");
 }
 void connectMqtt() {
-  if(WiFi.status()!=WL_CONNECTED||mqtt.connected())return;
+  if(WiFi.status()!=WL_CONNECTED||mqtt.connected()||mqttHost.isEmpty())return;
   if(uint32_t(millis()-lastMqttAttempt)<MQTT_RETRY_MS)return;
   lastMqttAttempt=millis();
   const String clientId=String("tpu-feed-")+DEVICE_ID;
-  if(!mqtt.connect(clientId.c_str(),MQTT_USER,MQTT_PASSWORD,
+  if(!mqtt.connect(clientId.c_str(),mqttUser.c_str(),mqttPassword.c_str(),
                    topicAvailability.c_str(),1,true,"offline"))return;
   mqtt.publish(topicAvailability.c_str(),"online",true);
   mqtt.subscribe(topicCommand.c_str(),1);
@@ -390,9 +472,10 @@ void setup() {
   topicStatus=topicPrefix+"/status";
   topicEvent=topicPrefix+"/event";
   topicCommand=topicPrefix+"/cmd/press";
-  WiFi.mode(WIFI_STA);
+  preferences.begin("tpufeeder",false);
+  loadSettings();
+  setupWifiPortal();
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID,WIFI_PASSWORD);
   lastWifiAttempt=millis();
   configTime(0,0,NTP_SERVER);
   if(MQTT_TLS){
@@ -405,7 +488,7 @@ void setup() {
   }else{
     mqtt.setClient(networkClient);
   }
-  mqtt.setServer(MQTT_HOST,MQTT_PORT);
+  mqtt.setServer(mqttHost.c_str(),mqttPort);
   mqtt.setCallback(onMqttMessage);
   mqtt.setBufferSize(1024);
   configureHttp();
