@@ -18,6 +18,13 @@
 #define GPIO_UNLOAD 5
 #define GPIO_FORCE 6
 #define GPIO_UNLOAD_ARM 7
+// Optional sensing of the ORIGINAL physical buttons. OFF until a dedicated,
+// electrically isolated, active-low sensor board has been measured/validated.
+// NEVER connect Bambu switch terminals to ESP32 GPIOs directly.
+#define ENABLE_LOCAL_BUTTON_MONITORING false
+#define GPIO_LOCAL_FEED 8
+#define GPIO_LOCAL_UNLOAD 9
+#define GPIO_LOCAL_FORCE 10
 // No autonomous unloading; physical key alone is NOT proof the toolhead is safe.
 #define ENABLE_UNLOAD_BUTTON false
 #define PULSE_MS 150U
