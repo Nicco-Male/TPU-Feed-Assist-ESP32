@@ -24,6 +24,7 @@ The goal is remote control and **local-button event monitoring** using a MacDat-
 | Isolated PhotoMOS FEED and FORCE press | Prototype source, not bench-validated |
 | UNLOAD | Disabled by default; requires compile-time enable + physical arming input |
 | Web UI / REST | Prototype source |
+| Password-protected OTA over Wi-Fi | Implemented in v0.2.0, disabled by default until configured |
 | MQTT events / status | Prototype source |
 | Physical button sensing | Firmware input events implemented behind an OFF-by-default flag; sensing hardware NOT validated |
 | Automatic AMS <-> external TPU material swaps | **Not supported** |
@@ -54,11 +55,12 @@ The inline adapter concept is an **ESP32 extension of the original remote-button
 2. Copy `include/config.example.h` to `include/config.h` and set Wi-Fi, HTTP, MQTT secrets (never commit the copy).
 3. `pio run -e xiao_esp32s3` and `pio run -e xiao_esp32s3 -t upload`.
 4. Test PhotoMOS switching *off-printer* before making connections.
+5. To update later **without opening the enclosure**, configure strong `OTA_PASSWORD` and `ENABLE_OTA=true` in `include/config.h`; see [OTA guide](docs/OTA.md). This does not make updates safe during printing.
 
 `GET /api/v1/status` returns **bridge status only**, not actual motor, toolhead, or filament state.
 `POST /api/v1/press` accepts `{"button":"feed","request_id":"unique-id"}` and requires HTTP Basic or X-API-Key authentication. The MQTT equivalent is `tpu-feed-assist/<DEVICE_ID>/cmd/press`.
 
-See [docs/HARDWARE_TEST_PLAN.md](docs/HARDWARE_TEST_PLAN.md) and [docs/BAMBUDDY_INTEGRATION.md](docs/BAMBUDDY_INTEGRATION.md).
+See [docs/HARDWARE_TEST_PLAN.md](docs/HARDWARE_TEST_PLAN.md), [docs/OTA.md](docs/OTA.md), and [docs/BAMBUDDY_INTEGRATION.md](docs/BAMBUDDY_INTEGRATION.md).
 
 ## Scope and safety
 
