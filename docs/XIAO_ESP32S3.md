@@ -25,12 +25,15 @@ See Seeed's [official pin table](https://wiki.seeedstudio.com/xiao_esp32s3_getti
 
 ## Power and isolation
 
-- Power the XIAO from its own **5 V USB-C supply**. The Bambu Bus stays dedicated to the original TPU Feed Assist Module; **do not wire Bambu Bus 5 V, any unknown voltage, or Bambu switch-line supply into XIAO pins**.
-- Keep Bambu button-side electrical contacts galvanically isolated from XIAO ground. PhotoMOS output contacts go **across** original button terminals only **after measurement**; the PhotoMOS input LED is driven from XIAO's GPIO + series resistor.
-- Original physical buttons are **passively wired through the SH1.0 inline adapter** and continue to work with XIAO unpowered.
-- Put suitable external **OFF-state biasing** on PhotoMOS LED driver circuitry so boot/reset/high-impedance ESP GPIOs cannot accidentally press a key. `INPUT_PULLUP` is for an **isolated sensor transistor only**, not original button terminals.
-- No direct connection between XIAO GPIO or GND and unknown Bambu button conductors.
-- Validate LED drive current, PhotoMOS ON resistance, off leakage, LED input threshold and Bambu switch voltage before wiring to any printer.
+**Current intended final design:** draw power from the **nominal 24 V Bambu Bus rail** already feeding the TPU Feed Assist, use a protected DC/DC 24 V -> 5 V, then supply the XIAO's **5V pin through a diode or proper power-path circuit**. No new external USB supply is needed when fully validated. **This connection is NOT electrically tested** and the exact 24 V rail/polarity and available current must be measured on the actual unit, with the X1C, two AMS and AMS Hub installed. **Never put 24 V or any unknown switch voltage directly into a XIAO pin.**
+
+Full harness/protection/regulator/isolation and acceptance criteria: [INTEGRATED_POWER.md](INTEGRATED_POWER.md).
+
+- Original buttons remain **passively wired through** the SH1.0 inline adapters even with XIAO unpowered.
+- The PhotoMOS outputs remain floating contacts across original button pairs; do not connect any original button conductor directly to an ESP GPIO.
+- **Non-isolated buck means XIAO GND and Bambu supply GND are shared**; the system is NOT galvanically isolated as a whole. A correctly specified isolated DC/DC can preserve system-level galvanic separation.
+- During initial electronics testing use USB-C with an off-printer bench setup. Before connecting programming USB alongside external 5 V, verify reverse-current/backfeed protection per [Seeed power documentation](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/).
+- Put appropriate external default-OFF bias on the PhotoMOS LED drive circuitry so boot/reset/high-impedance GPIOs do not simulate a press.
 
 ## Build / upload
 
