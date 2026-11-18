@@ -10,7 +10,7 @@ This repository builds on **that hardware concept** by proposing an ESP32-S3 bri
 
 **Unofficial ESP32-S3 accessory bridge for Bambu Lab TPU Feed Assist Module.**
 
-**Target board:** [Seeed Studio XIAO ESP32-S3 (standard)](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/), powered separately via USB-C. PlatformIO target: `seeed_xiao_esp32s3`. [Pin allocation and wiring](docs/XIAO_ESP32S3.md). The optional Sense camera/SD and Plus display add-ons are not part of this design.
+**Target board:** [Seeed Studio XIAO ESP32-S3 (standard)](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/). PlatformIO target: `seeed_xiao_esp32s3`. **Planned integrated power:** derive regulated 5 V from the Bambu Bus's nominal 24 V through a protected DC/DC converter inside the feeder housing, with no extra external USB power cable. This power interface is **UNVERIFIED pending real hardware measurements**; initial bench tests may use USB-C instead. See [integrated power plan](docs/INTEGRATED_POWER.md) and [XIAO pinout](docs/XIAO_ESP32S3.md). The optional Sense/Plus add-ons are not part of this design.
 
 The goal is remote control and **local-button event monitoring** using a MacDat-inspired SH1.0 inline adapter. Original buttons should remain electrically usable with the ESP32 unpowered. Firmware implements **remote button pulses**, and provides **optional debounced GPIO input monitoring** of physical keys. Input monitoring is disabled by default: its isolated sensing electronics still require hardware measurements and validation.
 
