@@ -1,6 +1,6 @@
 # Inline board design — local physical buttons + remote ESP32
 
-**Design-stage specification, NOT a verified schematic.** This follows the user request to read original MacDat/Bambu physical keys **without cutting or splicing wires**.
+**Design-stage specification, NOT a verified schematic.** This is an independent electronics extension inspired by **[MacDat's original TPU Feed Assist Module Remote Controller](https://makerworld.com/en/models/2704030)**, which introduced a convenient external three-button remote and SH1.0 harness approach. Credit for that original remote hardware belongs to MacDat; the inline sensing board below is our untested proposal, not MacDat's design. This design aims to read the original Bambu buttons **without cutting or splicing wires**. See [NOTICE.md](../NOTICE.md).
 
 ## Connection
 
