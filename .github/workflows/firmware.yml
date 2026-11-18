@@ -39,7 +39,10 @@ jobs:
       - name: Install Bambuddy test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.lock -r requirements-dev.txt
+          pip install -r requirements.lock
+          # requirements-dev.txt pins Ruff 0.15.20 while the locked runtime
+          # dependencies pin Ruff 0.17.0; targeted tests only need pytest-timeout.
+          pip install 'pytest-timeout>=2.4.0'
       - name: Check changed backend Python syntax
         run: |
           python -m compileall -q backend/app/models/spoolbuddy_device.py backend/app/schemas/spoolbuddy.py backend/app/api/routes/spoolbuddy.py backend/app/core/database.py backend/tests/integration/test_spoolbuddy.py
