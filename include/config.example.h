@@ -14,6 +14,12 @@
 #define MQTT_TLS 0
 #define MQTT_CA_CERT ""
 #define NTP_SERVER "pool.ntp.org"
+// Integrated-power installs should enable OTA after choosing a strong password.
+// OTA must be executed only while printer and feeder are IDLE; firmware cannot
+// yet verify printer state. Do not expose OTA on the public Internet.
+#define ENABLE_OTA false
+#define OTA_PORT 3232
+#define OTA_PASSWORD "CHANGE_TO_A_UNIQUE_20_CHAR_SECRET"
 // Seeed XIAO ESP32-S3 STANDARD board (D0..D10).
 // Outputs to isolated PhotoMOS DRIVER LEDs, never directly to Bambu switch lines.
 #define GPIO_FEED 4       // XIAO D3 -> PhotoMOS FEED
