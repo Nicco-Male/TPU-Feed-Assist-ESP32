@@ -1,5 +1,13 @@
 # TPU Feed Assist ESP32 — prototype
 
+## Credits — MacDat's original work
+
+**Hardware concept inspired by [MacDat's “TPU Feed Assist Module Remote Controller” on MakerWorld](https://makerworld.com/en/models/2704030).** MacDat designed and published the original **external three-button remote-control solution** for the Bambu Lab TPU Feed Assist Module, including the SH1.0 button wiring/extension approach and an external remote enclosure. **Please visit the original project and credit MacDat when reproducing or adapting that hardware.**
+
+This repository builds on **that hardware concept** by proposing an ESP32-S3 bridge, isolated electronic button actuation and remote software control. **The ESP32 firmware, MQTT/HTTP API and proposed inline sensing board here are our independent extensions, not features of MacDat's project.** MacDat is not presented as a contributor, maintainer or endorser of this repository.
+
+**MacDat's 3D models, photos, instructions and any other source assets are NOT included or relicensed under MIT here.** Download original assets from MakerWorld and respect the license shown there; our MIT `LICENSE` covers only the original code and documentation in this repository. See [NOTICE.md](NOTICE.md) for attribution details.
+
 **Unofficial ESP32-S3 accessory bridge for Bambu Lab TPU Feed Assist Module.**
 
 The goal is remote control and **local-button event monitoring** using a MacDat-inspired SH1.0 inline adapter. Original buttons should remain electrically usable with the ESP32 unpowered. Firmware implements **remote button pulses**, and provides **optional debounced GPIO input monitoring** of physical keys. Input monitoring is disabled by default: its isolated sensing electronics still require hardware measurements and validation.
@@ -36,11 +44,7 @@ With an inline adapter, both physical-key wires remain passively connected even 
 
 For future physical-button sensing, an isolated active-low front end (not yet designed) can drive GPIO8/9/10. Set `ENABLE_LOCAL_BUTTON_MONITORING=true` only after validating the sensor, never connect the original Bambu key wires to ESP pins. MQTT `event` will emit `local_press_observed_unverified` and `local_release_observed_unverified` for debounced changes; changes concurrent with remote pulses are suppressed. They are input observations, not proof the feeder responded.
 
-The MacDat project's **cable and button-extension approach** motivates the detachable connectors, not a claim that their original project contains firmware:
-
-https://makerworld.com/en/models/2704030
-
-We do not redistribute their printable files or hardware artwork.
+The inline adapter concept is an **ESP32 extension of the original remote-button hardware approach by MacDat**. For the original mechanical design and wiring, consult [MacDat's MakerWorld project](https://makerworld.com/en/models/2704030). No MacDat printable files or artwork are redistributed here.
 
 ## Build
 
@@ -60,4 +64,4 @@ Bambu's official TPU Feed Assist workflow does not support AMS-like automatic lo
 
 **Never operate unattended material changes based solely on a successful PhotoMOS pulse.**
 
-This code is MIT licensed; Bambu Lab, MacDat and Bambuddy are independent third parties.
+Our original firmware and documentation are MIT-licensed. MacDat's project remains MacDat's work under its own MakerWorld license; Bambu Lab, MacDat and Bambuddy are independent third parties and have not endorsed this project.
