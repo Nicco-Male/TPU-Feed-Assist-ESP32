@@ -2,6 +2,8 @@
 
 Upstream: https://github.com/maziggy/bambuddy
 
+**Original hardware inspiration:** [MacDat's TPU Feed Assist Module Remote Controller](https://makerworld.com/en/models/2704030). The SH1.0 external-button concept is MacDat's original work. The ESP32 protocol and integration proposal are independent extensions, not MacDat's firmware or an endorsement. See [NOTICE.md](../NOTICE.md).
+
 ## Intended device
 
 - Printer: Bambu Lab X1 Carbon
