@@ -22,6 +22,14 @@ class PrototypeContract(unittest.TestCase):
         }
         for name, pin in pins.items():
             self.assertRegex(CONFIG, rf"#define\s+{name}\s+{pin}(?:\s|$)")
+    def test_wifi_ota_is_opt_in_and_password_protected(self):
+        self.assertIn("#define ENABLE_OTA false", CONFIG)
+        self.assertIn("#define OTA_PORT 3232", CONFIG)
+        self.assertIn('ArduinoOTA.setPassword(OTA_PASSWORD)', SOURCE)
+        self.assertIn("strlen(OTA_PASSWORD) >= 16", SOURCE)
+        self.assertIn("otaInProgress", SOURCE)
+        self.assertIn('if (otaInProgress) return "ota_in_progress"', SOURCE)
+
     def test_protected_unload(self):
         self.assertIn("#define ENABLE_UNLOAD_BUTTON false", CONFIG)
         self.assertIn('buttonName == "unload" && !isUnloadArmed()', SOURCE)
